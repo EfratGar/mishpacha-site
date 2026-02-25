@@ -1377,16 +1377,42 @@
   </footer>
 
   <script>
-    // Hero video fade-in
-    const heroVid = document.getElementById('heroBgVideo');
-    if (heroVid) {
-      const fadeIn = () => heroVid.classList.add('loaded');
-      if (heroVid.readyState >= 3) {
-        fadeIn();
-      } else {
-        heroVid.addEventListener('canplay', fadeIn, { once: true });
-      }
+    // Hero video fade-in + mobile autoplay fallback
+const heroVid = document.getElementById('heroBgVideo');
+if (heroVid) {
+  const fadeIn = () => heroVid.classList.add('loaded');
+
+  const tryPlay = async () => {
+    try {
+      // make sure it's muted (mobile autoplay requirement)
+      heroVid.muted = true;
+      const p = heroVid.play();
+      if (p && typeof p.then === 'function') await p;
+      fadeIn();
+    } catch (err) {
+      // Autoplay blocked on some mobile browsers until user interacts
+      const onFirstTap = async () => {
+        try {
+          heroVid.muted = true;
+          await heroVid.play();
+          fadeIn();
+        } catch (e) {}
+        document.removeEventListener('touchstart', onFirstTap);
+        document.removeEventListener('click', onFirstTap);
+      };
+      document.addEventListener('touchstart', onFirstTap, { once: true, passive: true });
+      document.addEventListener('click', onFirstTap, { once: true });
+      // show the poster overlay (avoid blank)
+      fadeIn();
     }
+  };
+
+  if (heroVid.readyState >= 2) {
+    tryPlay();
+  } else {
+    heroVid.addEventListener('loadedmetadata', tryPlay, { once: true });
+  }
+}
 
     // Year
     document.getElementById('year').textContent = new Date().getFullYear();
